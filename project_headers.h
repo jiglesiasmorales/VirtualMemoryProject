@@ -290,10 +290,20 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 
 
 //******************************************************************************
+// DONE
 // Clears the reference bits of the TLB and the Page Table
+// Written by : Jan Iglesias
 void reset_reference_bits (unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4], int page_table_size)
 {
+	// Clearing reference bit in the TLB (setting R = 0)
+	for(int i = 0; i < tlb_size; i++)
+		TLB[i][2] = 0;
 
+	// Clearing reference bit in the PageTable (setting R = 0)
+	for(int i = 0; i < page_table_size; i++)
+		PageTable[i][2] = 0;
+
+	return;
 }
 
 
