@@ -300,21 +300,15 @@ unsigned int select_page_eviction_candidate(unsigned int PageTable[][4], int siz
 	
 	// Checking if a virtual page with VDR = 100 exists ( -1  -> DNE )
 	if(possibleCandidate == -1)
-	{
 		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 1, 0); // Checking following criteria ( VDR = 110)
-	}
 
 	// Checking if a virtual page with VDR = 110 exists ( -1  -> DNE )
 	if(possibleCandidate == -1)
-	{
 		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 0, 1); // Checking following criteria ( VDR = 101)
-	}
 
 	// Checking if a virtual page with VDR = 101 exists ( -1  -> DNE )
 	if(possibleCandidate == -1)
-	{
 		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 1, 1); // Checking following criteria ( VDR = 111)
-	}
 
 	return possibleCandidate;
 
