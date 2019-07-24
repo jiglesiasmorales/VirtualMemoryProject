@@ -253,6 +253,7 @@ int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D,
 	int resultsFound = 0;
 	int validEntries[size];
 	int result;
+	srand(time(0));
 
 	// Initiazliing validEntries to zero
 	for(int i = 0; i < size; i++)
