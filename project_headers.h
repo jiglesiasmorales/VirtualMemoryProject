@@ -1,3 +1,10 @@
+
+
+#include <stdlib.h>
+#include <time.h>
+#include <stdio.h>
+
+
 //******************************************************************************
 //***********************  TLB  Functions  *************************************
 //******************************************************************************
@@ -36,6 +43,7 @@ int TLB_lookup(unsigned int TLB[][5], int size, unsigned int vpn)
 	// Iterating through the whole TBL
 	for(int i = 0; i < size; i++)
 	{
+		// If the current entry in TLB has a matching vpn return index
 		if( TLB[i][3] == vpn)
 			return i;
 	}
@@ -43,57 +51,174 @@ int TLB_lookup(unsigned int TLB[][5], int size, unsigned int vpn)
 	return -1;
 
 }
-
+// DONE
 // Returns the index of the first available TLB entry
 // Returns -1 if all TLB entries are used
+// Written by : Jan Iglesias
 int get_available_TLB_entry (unsigned int TLB[][5], int size)
 {
+	// Iterating through the whole TBL
+	for(int i = 0; i < size; i++)
+	{
+		// If the current entry in TLB has a valid field of 0 then it is empty and return index
+		if( TLB[i][0] == 0)
+			return i;
+	}
+
+	return -1;
 
 }
 
+// DONE  
 // Selects the TLB entry that will be evicted
 // Pre-condition: All TLB entries are full
 // Criteria: Select a random entry with ref.bit=0; if all ref.bit=1, select a random entry
+// Written by: Jan Iglesias
 unsigned int select_TLB_shootdown_candidate(unsigned int TLB[][5], int size)
 {
+	// The following array will contain a 0 in TLB entries with ref = 1 and 1 in TLB entries with ref = 0
+	int indicesWithRefZero[size];
+	// Will hold the number of entries found
+	int indexCount = 0;
+	int shootDownCandidate;
+
+	// Seeding rng
+	srand(time(0));
+	// Initializing array to -1
+	for(int i = 0; i < size; i++)
+		indicesWithRefZero[i] = -1;
+
+	// Marking which indices have a ref of 0 in the aux array
+	for(int i = 0; i < size; i++)
+	{
+		if(TLB[i][2] == 0)
+		{
+			indicesWithRefZero[indexCount] = i;
+			indexCount++;
+		}
+	}
+
+	// If atleast one entry is found then pick a random one
+	if(indexCount != 0)
+	{
+		shootDownCandidate =  rand() % indexCount ;
+		return indicesWithRefZero[shootDownCandidate];
+	}
+	// Else pick a random one
+	else
+	{
+		shootDownCandidate = rand() % size; 
+		return shootDownCandidate;
+	}
 
 }
 
+// DONE
 // Perform a TLB shootdown (set V=0, copy D,R bits to the page table)
 // Pre-condition: shootdown entry is currently valid
 // Parameter index is the TLB entry to shoot down
+// Written by : Jan Iglesias
 void TLB_shootdown (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4],
 						int page_table_size, int index	)
 {
+	// Creating variables to hold D and R (V is always 1 in this function) and pageNumber
+	int shootDownD, shootDownR, pageNumber, frameNumber;
 
+	// Getting info from TLB entry
+	shootDownD = TLB[index][1];		// Getting D
+	shootDownR = TLB[index][2];		// Getting R
+	pageNumber = TLB[index][3];		// Getting page number
+	frameNumber = TLB[index][4];	// Getting frame number
+
+	TLB[index][0] = 0;				// Setting this entry to empty.
+
+	// Filling PageTable entry with values of shootdown entry
+	PageTable[pageNumber][0] = 1;
+	PageTable[pageNumber][1] = shootDownD;
+	PageTable[pageNumber][2] = shootDownR;
+	PageTable[pageNumber][3] = frameNumber;
+
+	return;
 }
 
+// DONE
 // Copies a translation from the Page Table to the TLB
 // The first available TLB entry is used; otherwise, a TLB shootdown is performed
 // It copies the D,R bits and the frame number from the page table
 // Parameter: virtual page number
 // Returns: (+1: shootdown performed)
+// Written by : Jan Iglesias
 int cache_translation_in_TLB (unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4],
 							 int page_table_size, unsigned int vpn	)
 {
+	int currentEntry = 0;
+	int copiedV, copiedD, copiedR, copiedPageNumber, copiedFrameNumber;
+	int shootDownCandiate;
 
-}
+	// Getting fields to be copied
+	copiedV = PageTable[vpn][0];
+	copiedD = PageTable[vpn][1];
+	copiedR = PageTable[vpn][2];
+	copiedFrameNumber = PageTable[vpn][3];
+
+	// Finding an available entry
+	for(currentEntry = 0; currentEntry < tlb_size; currentEntry++)
+	{
+		// If an available entry is found then fill it and return 0.
+		if(TLB[currentEntry][0] == 0)
+		{
+			TLB[currentEntry][0] = 1;
+			TLB[currentEntry][1] = copiedD;
+			TLB[currentEntry][2] = copiedR;
+			TLB[currentEntry][3] = vpn;
+			TLB[currentEntry][4] = copiedFrameNumber;
+			return 0;
+		}
+	}
+
+	// If no available entry is found then we must make one.
+	// Finding shootdown candiate
+	shootDownCandiate = select_TLB_shootdown_candidate(TLB, tlb_size);
+
+	// Performing shootdown
+	TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, shootDownCandiate	);
+
+	// Filling in shotdown entry
+	TLB[shootDownCandiate][0] = 1;
+	TLB[shootDownCandiate][1] = copiedD;
+	TLB[shootDownCandiate][2] = copiedR;
+	TLB[shootDownCandiate][3] = vpn;
+	TLB[shootDownCandiate][4] = copiedFrameNumber;
+
+	// Return 1 to mark a shootdown was performed
+	return 1;
+}	
 
 
 //******************************************************************************
 //***********************  Page Table Functions  *******************************
 //******************************************************************************
 //
-// Page table entries will use bit masking to hold the V, D, and R bits
-// V = 100
-// D = 10
-// R = 1
 //
-// An entry in the Page Table with the following value
-// 101  ->>> V = 1,   D = 0, R = 1
-// 000  ->>> V = 0,   D = 0, R = 0
-// 111  ->>> V = 1,   D = 1, R = 1
-// 011  ->>> V = 0,   D = 1, R = 1
+//
+//
+// PAGE TABLE FORMAT
+//
+//						0				1				  2							 3	
+//|    Page # 	|	Valid Bit 	|	Dirty bit 	|	Reference bit 	| 	Frame # (Physical page #)	|
+//===================================================================================================
+//|      0      |	   V		|       D  		|		  R 		|	mustBeCalculatedInFunct		|
+//===================================================================================================
+//|      1      |	   V		|       D  		|		  R 		|	mustBeCalculatedInFunct		|
+//===================================================================================================
+//|      2      |	   V		|       D  		|		  R 		|	mustBeCalculatedInFunct		|
+//===================================================================================================
+//|      3      |	   V		|       D  		|		  R 		|	mustBeCalculatedInFunct		|
+//===================================================================================================
+//|      4      |	   V		|       D  		|		  R 		|	mustBeCalculatedInFunct		|
+//===================================================================================================
+//
+//
 //
 //
 // Frame table contains all spaces in memory.
