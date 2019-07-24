@@ -241,15 +241,48 @@ int get_available_frame (unsigned int FrameTable[], int size)
 	return -1;
 
 }
-
+// DONE
 // Search the PageTable for VDR values passed as parameters
 // Return -1 if not found; otherwise, return the index of one such
 // randomized entry (using rand function)
 // Pre-condition: VDR are 0 or 1
+// Written by : Jan Iglesias
 int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D, int R)
 {
+	// Creating counter for results found an an array that will hold matches
+	int resultsFound = 0;
+	int validEntries[size];
+	int result;
+
+	// Initiazliing validEntries to zero
+	for(int i = 0; i < size; i++)
+		validEntries[i] = 0;
+	
+	// Iterating through PageTable
+	for (int i = 0; i < size; i++)
+	{
+		// Checking if current entry in PageTable has matching VDR
+		if(PageTable[i][0] == V && PageTable[i][1] == D && PageTable[i][2] == R)
+		{
+			// If current entry has matching VDR save entry and increment resultsFound
+			validEntries[resultsFound] = i;
+			resultsFound++;
+		}
+	}
+
+	// If atleast one result is found (Return a random one that qualifies)
+	if(resultsFound != 0)
+	{
+		result =  rand() % resultsFound ;
+		return validEntries[resultsFound];
+	}
+
+	// If no results are found
+	else
+		return -1;
 
 }
+
 
 // Selects the virtual page that will be replaced
 // Pre-condition: All the frames are allocated
