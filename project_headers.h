@@ -284,13 +284,39 @@ int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D,
 }
 
 
+// DONE
 // Selects the virtual page that will be replaced
 // Pre-condition: All the frames are allocated
 // Criteria: Valid must be 1; choose in order as below
 //     VDR.bits: 100   110   101   111
 // Between pages with the same category, randomize (using rand)
+// Written by : Jan Iglesias
 unsigned int select_page_eviction_candidate(unsigned int PageTable[][4], int size)
 {
+	int possibleCandidate;
+
+	// Check if virtual page w..ith VDR = 100 exists
+	possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 0, 0);
+	
+	// Checking if a virtual page with VDR = 100 exists ( -1  -> DNE )
+	if(possibleCandidate == -1)
+	{
+		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 1, 0); // Checking following criteria ( VDR = 110)
+	}
+
+	// Checking if a virtual page with VDR = 110 exists ( -1  -> DNE )
+	if(possibleCandidate == -1)
+	{
+		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 0, 1); // Checking following criteria ( VDR = 101)
+	}
+
+	// Checking if a virtual page with VDR = 101 exists ( -1  -> DNE )
+	if(possibleCandidate == -1)
+	{
+		possibleCandidate = search_PageTable_by_VDR(PageTable, size, 1, 1, 1); // Checking following criteria ( VDR = 111)
+	}
+
+	return possibleCandidate;
 
 }
 
