@@ -315,17 +315,51 @@ unsigned int select_page_eviction_candidate(unsigned int PageTable[][4], int siz
 
 }
 
+// DONE
 // Evict a page from RAM to the hard disk
 // If its translation is in the TLB, perform a TLB shootdown
 // If the page is dirty, write it to hard disk
 // Update the Frame Table and the page table
 // Pre-condition: the page is currently allocated in the RAM
 // Returns (+1: TLB shootdown performed) (+10: hard disk write performed)
+// Written by : Jan Iglesais
 int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int TLB[][5],
 				 int tlb_size, int FrameTable[], int frame_table_size, int vpn	)
 {
+	int evictTlbEntry, evictedFrame, result = 0, dirty;
+
+	// Getting frame from page
+	evictedFrame = PageTable[vpn][3];
+
+	// Getting dirty bit
+	dirty = PageTable[vpn][1];
+
+	// Setting valid bit to 0 in the PageTable
+	PageTable[vpn][0] = 0;
+
+	// Write to hard drive is necessary
+	if (dirty == 1)
+		result+= 10;
+	
+	// Getting tlb entry of page to be evicted
+	evictTlbEntry = TLB_lookup(TLB, tlb_size, vpn)
+
+	// TLB shootdown is necessary
+	if( evictTlbEntry != -1)
+	{
+		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, evictTlbEntry	);
+		result += 1;
+	}
+
+	// Setting evictedFrame to unallocated in memory
+	FrameTable[evictedFrame] = 0;
+		
+	return result;
 
 }
+
+
+
 
 // Copies a page from the hard disk to the RAM 
 // Pre-conditions: Page currently not in RAM; page's translation is not in the TLB
@@ -337,7 +371,7 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 						int tlb_size, unsigned int FrameTable[], int frame_table_size, unsigned int vpn,
 						int read_write	)
 {
-
+	
 }
 
 
