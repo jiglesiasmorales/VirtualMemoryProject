@@ -502,6 +502,8 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 {
 	int tlbLookUpResult, validCopy, dirtyCopy, refCopy, frameCopy;
 
+	// int vpn = address / 1024;
+
 	// Check if TLB contains address
 	tlbLookUpResult = TLB_lookup(TLB, tlb_size, address);
 
