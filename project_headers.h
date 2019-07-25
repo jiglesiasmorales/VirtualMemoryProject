@@ -342,12 +342,12 @@ int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int 
 		result+= 10;
 	
 	// Getting tlb entry of page to be evicted
-	evictTlbEntry = TLB_lookup(TLB, tlb_size, vpn)
+	evictTlbEntry = TLB_lookup(TLB, tlb_size, vpn);
 
 	// TLB shootdown is necessary
 	if( evictTlbEntry != -1)
 	{
-		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, evictTlbEntry	);
+		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, evictTlbEntry);
 		result += 1;
 	}
 
@@ -360,18 +360,112 @@ int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int 
 
 
 
-
+// DONE (Doubt)
 // Copies a page from the hard disk to the RAM 
 // Pre-conditions: Page currently not in RAM; page's translation is not in the TLB
 // Find a frame for the page; if all the frames are used, performa a page eviction
 // Find a TLB entry for the page; if the TLB is full, perform a TLB shootdown
 // Returns (+1: TLB shootdown performed) (+10: hard disk write performed) (+100: page eviction performed)
 // Parameter read_write: indicates read access or write access
-int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsigned int TLB[][4],
+// Written by : Jan Iglesias
+int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsigned int TLB[][5],
 						int tlb_size, unsigned int FrameTable[], int frame_table_size, unsigned int vpn,
 						int read_write	)
 {
-	
+	int evictionPageCandidate, result = 0, frameLocation, availableTLBEntry, pageCandidate;
+
+	// Finding available frame if any
+	frameLocation = get_available_frame(FrameTable, frame_table_size);
+
+	// If frameLocation remains as -1 then no spot is found and we must make space.
+	if(frameLocation == -1)
+	{
+		// Getting eviction page candidate, storing frameLocation and evicting page
+		evictionPageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
+		frameLocation = PageTable[evictionPageCandidate][3];
+		result += page_evict (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, evictionPageCandidate);
+
+		// Filling newly evicted frame
+		FrameTable[frameLocation] = 1;
+
+		// Filling newly evicted page
+		PageTable[evictionPageCandidate][0] = 1;
+		PageTable[evictionPageCandidate][1] = 0;
+		PageTable[evictionPageCandidate][2] = 0;
+		PageTable[evictionPageCandidate][3] = frameLocation;
+
+		// Filling TLB entry
+		// Finding TLB
+		availableTLBEntry = get_available_TLB_entry(TLB, tlb_size);
+
+		// If shootdown is necessary
+		if(availableTLBEntry == -1)
+		{
+			availableTLBEntry = select_TLB_shootdown_candidate(TLB, tlb_size);
+			TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, availableTLBEntry);
+		}
+
+		// Filling TLB
+		TLB[availableTLBEntry][0] = 1;
+		TLB[availableTLBEntry][1] = 0;
+		TLB[availableTLBEntry][2] = 0;
+		TLB[availableTLBEntry][3] = evictionPageCandidate;
+		TLB[availableTLBEntry][4] = frameLocation;
+
+		return result;
+	}
+
+	// Filling frame
+	FrameTable[frameLocation] = 1;
+
+	pageCandidate = -1;
+
+	// Finding available page table entry
+	for(int i = 0 ; i < page_table_size; i++)
+	{
+		if(PageTable[i][0] == 0)
+		{
+			pageCandidate = i;
+			break;
+		}
+	}
+
+	// If no candidate is found then we must evict a page.
+	if(pageCandidate == -1)
+	{
+		pageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
+		result += page_evict (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, pageCandidate);
+	}
+
+	// Filling found page
+	PageTable[pageCandidate][0] = 1;
+	PageTable[pageCandidate][1] = 0;
+	PageTable[pageCandidate][2] = 0;
+	PageTable[pageCandidate][3] = frameLocation;
+
+	// Filling TLB entry
+	// Finding TLB
+	availableTLBEntry = get_available_TLB_entry(TLB, tlb_size);
+
+	// If shootdown is necessary
+	if(availableTLBEntry == -1)
+	{
+		availableTLBEntry = select_TLB_shootdown_candidate(TLB, tlb_size);
+		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, availableTLBEntry);
+		result++;
+	}
+
+	// Filling TLB
+	TLB[availableTLBEntry][0] = 1;
+	TLB[availableTLBEntry][1] = 0;
+	TLB[availableTLBEntry][2] = 0;
+	TLB[availableTLBEntry][3] = pageCandidate;
+	TLB[availableTLBEntry][4] = frameLocation;
+
+	return result;
+
+
+
 }
 
 
@@ -406,7 +500,17 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 						int page_table_size, unsigned int FrameTable[], int frame_table_size,
 						unsigned int address, int read_write	)
 {
+	int tlbLookUpResult, validCopy, dirtyCopy, refCopy, frameCopy;
 
+	// Check if TLB contains address
+	tlbLookUpResult = TLB_lookup(TLB, tlb_size, address);
+
+	// If tlbLookUp returns a -1 then it is a miss
+	if(tlbLookUpResult == -1)
+	{
+		// We must get the info from the pageTable and put it in the TLB
+		
+	}
 }
 
 
