@@ -44,7 +44,7 @@ int TLB_lookup(unsigned int TLB[][5], int size, unsigned int vpn)
 	for(int i = 0; i < size; i++)
 	{
 		// If the current entry in TLB has a matching vpn return index
-		if( TLB[i][3] == vpn)
+		if( TLB[i][3] == vpn && TLB[i][0] == 1)
 			return i;
 	}
 
@@ -149,6 +149,7 @@ void TLB_shootdown (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 int cache_translation_in_TLB (unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4],
 							 int page_table_size, unsigned int vpn	)
 {
+	// printf("cache_translation_in_TLB with vpn = %d\n", vpn);
 	int currentEntry = 0;
 	int copiedV, copiedD, copiedR, copiedPageNumber, copiedFrameNumber;
 	int shootDownCandiate;
@@ -162,6 +163,7 @@ int cache_translation_in_TLB (unsigned int TLB[][5], int tlb_size, unsigned int 
 	// Finding an available entry
 	for(currentEntry = 0; currentEntry < tlb_size; currentEntry++)
 	{
+		// printf("In currentEntry = %d (Looking for available entry in TLB)\n", currentEntry);
 		// If an available entry is found then fill it and return 0.
 		if(TLB[currentEntry][0] == 0)
 		{
@@ -174,6 +176,7 @@ int cache_translation_in_TLB (unsigned int TLB[][5], int tlb_size, unsigned int 
 		}
 	}
 
+	// printf("About to perform a shootdown\n");
 	// If no available entry is found then we must make one.
 	// Finding shootdown candiate
 	shootDownCandiate = select_TLB_shootdown_candidate(TLB, tlb_size);
@@ -319,7 +322,7 @@ unsigned int select_page_eviction_candidate(unsigned int PageTable[][4], int siz
 // Update the Frame Table and the page table
 // Pre-condition: the page is currently allocated in the RAM
 // Returns (+1: TLB shootdown performed) (+10: hard disk write performed)
-// Written by : Jan Iglesais
+// Written by : Jan Iglesias
 int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int TLB[][5],
 				 int tlb_size, int FrameTable[], int frame_table_size, int vpn	)
 {
@@ -384,6 +387,7 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 	// If frameLocation remains as -1 then no spot is found and we must make space.
 	if(frameLocation == -1)
 	{
+		//printf("No frames found when looking for vpn = %d\n", vpn);
 		// Getting eviction page candidate, storing frameLocation and evicting page
 		evictionPageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
 		frameLocation = PageTable[evictionPageCandidate][3];
@@ -422,7 +426,7 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 //******************************************************************************
 // DONE
 // Clears the reference bits of the TLB and the Page Table
-// Written by : Jan Iglesias
+// Written by : Moses Quiliche
 void reset_reference_bits (unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4], int page_table_size)
 {
 	// Clearing reference bit in the TLB (setting R = 0)
@@ -452,23 +456,42 @@ void reset_reference_bits (unsigned int TLB[][5], int tlb_size, unsigned int Pag
 // statistics [5] = Page Eviction
 // statistics [6] = HD read
 // statistics [7] = HD write
+// statistics [8] = TLB Write
+// statistics [9] = Page Table Write
+// statistics [10] = Total accesses
 // Simulates a memory access; updates all the data and statistics
+// Written by : Jan Iglesias
 void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4],
 						int page_table_size, unsigned int FrameTable[], int frame_table_size,
-						unsigned int address, int read_write, int statistics [8])
+						unsigned int address, int read_write, int statistics [11])
 {
 	int tlbLookUpResult, validCopy, dirtyCopy, refCopy, frameCopy;
 	int result = 0;
 	int vpn = address / 1024;
+	statistics[10]++;
+
+
+	// Every 25 accesses we will reset the reference bits
+	if(statistics[10] % 25 == 0)
+	{
+		reset_reference_bits (TLB, tlb_size,PageTable, page_table_size);
+		// printf("****************PREFERENCE BITS HAVE BEEN RESET****************\n");
+	}
+		
+
 
 	// Check if TLB contains address
 	tlbLookUpResult = TLB_lookup(TLB, tlb_size, vpn);
 
+
+	// printf("tlbLookUpResult = %d\n", tlbLookUpResult);
 	// If tlbLookUp returns a -1 then it is a miss
 	if(tlbLookUpResult == -1)
 	{
-		//Incrementing TLB Miss
+		//printf("TLB Miss\n");
+		//Incrementing TLB Miss and TLB Write
 		statistics[1]++;
+		statistics[8]++;
 
 		// Checking if data is in Page Table
 		// If it is in page table then we transfer it to TLB (Hit)
@@ -478,13 +501,19 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 			//Incrementing PageTable hit
 			statistics[2]++;
 
+
+
 			// We must get the info from the pageTable and put it in the TLB
+			//printf("About to go into cache_translation_in_TLB from TLB Hit\n");
 			result = cache_translation_in_TLB (TLB, tlb_size, PageTable, page_table_size, vpn);
+
+
 
 			// Shootdown was performed
 			if(result == 1)
 			{
 				//Incrementing TLB shootdown
+				// printf("Shootdown was performed on vpn = %d and page table hit\n", vpn);
 				statistics[4]++;
 			}
 
@@ -508,18 +537,22 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 			return;
 
 		}
-		// It is not in page table. Must get from frameTable (Miss)
+		// It is not in page table. (Miss)
 		else
 		{
-			//Incrementing PageTable miss
+			// printf("Not in table\n");
+			//Incrementing PageTable miss and write
 			statistics[3]++;
+			statistics[9]++;
 
+			// printf("About to go into cache_page_in_RAM from Page Miss\n");
 			result = cache_page_in_RAM (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, vpn, read_write);
 
 			// Shootdown performed
 			if(result & 1 == 1)
 			{
 				//Incrementing TLB shootdown
+				// printf("Shootdown was performed on vpn = %d cuz of cache_page_in_RAM and page table miss\n", vpn);
 				statistics[4]++;
 			}
 
@@ -536,17 +569,6 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 				//Incrementing Page Eviction
 				statistics[5]++;
 			}
-
-			// We must get the info from the pageTable and put it in the TLB
-			result = cache_translation_in_TLB (TLB, tlb_size, PageTable, page_table_size, vpn);
-
-			// Shootdown was performed
-			if(result == 1)
-			{
-				//Incrementing TLB shootdown
-				statistics[4]++;
-			}
-
 
 			// Getting location of TLB entry
 			tlbLookUpResult = TLB_lookup(TLB, tlb_size, vpn);
@@ -575,8 +597,11 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 	// else it is a hit
 	else
 	{
-		//Incrementing TLB Hit
+		// Incrementing TLB Hit
 		statistics[0]++;
+
+		// Enabling valid bit
+		TLB[tlbLookUpResult][0] = 1;
 
 		// Read
 		if(read_write == 0)
@@ -590,6 +615,8 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 			TLB[tlbLookUpResult][2] = 1;	// Ref bit is 1
 			
 		}
+
+
 
 		return;
 	}

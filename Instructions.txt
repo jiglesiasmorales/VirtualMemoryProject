@@ -1,0 +1,12 @@
+INSTRUCTIONS
+1) Place project_headers.h and VirtualMemorySimulator.c in the same directory
+2) Compile and run VirtualMemorySimulator.c
+3) A menu will appear in the command line
+4) Type an r for read access or a w for write access followed by the address you would like to access and press enter
+5) Repeat for however many accesses you would like
+6) Enter z -1 to finish inputting addresses
+7) Simulation will then be ran and the results will be displayed
+
+
+NOTE: 		Further functions are included in the VirtualMemorySimulator.c that can be used to further test the simulation.
+			To use these extra functions, read their function descriptions and modify the main function to include them.
