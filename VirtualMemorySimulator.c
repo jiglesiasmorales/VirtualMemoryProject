@@ -8,6 +8,8 @@
 
 // Included libraries
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "project_headers.h"
 
 // Definitions
@@ -24,6 +26,21 @@ unsigned int FrameTable[FRAMES];
 // Main function
 int main(void)
 {
+	// Seeding RNG needed for functions
+	srand(time(NULL));
+
+
+	int freq[8];
+
+	for(int i = 0; i < 8; i++)
+		freq[i] = 0;
+
+	// Initializing TLB to zero (Setting valid bit to 0)
+	for(int i = 0; i < TLB_SIZE; i++)
+		TLB[i][0] = 0;
+
 	
+
+
 	return 0;
 }
