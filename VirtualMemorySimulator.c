@@ -23,24 +23,81 @@ unsigned int PageTable[VPAGES][4];
 unsigned int TLB [TLB_SIZE][5]; 
 unsigned int FrameTable[FRAMES];
 
+
+// int statistics [8] will contain the relevant stats data
+// statistics [0] = TLB hit
+// statistics [1] = TLB miss
+// statistics [2] = Page Table Hit
+// statistics [3] = Page Table Fault
+// statistics [4] = TLB shootdown
+// statistics [5] = Page Eviction
+// statistics [6] = HD read
+// statistics [7] = HD write
+int statistics[8];
+
+
+
+// Prints out TLB
+void printTLB(void)
+{
+	printf("=======================TLB=====================\n");
+	printf("|Entry|  V  |  D  |  R  |  VPN  |  Physical   |\n");
+	printf("===============================================\n");
+
+	for(int i = 0; i < TLB_SIZE; i++)
+		printf("|  %d  |  %d  |  %d  |  %d  |  %d  |      %d     |\n", i, TLB[i][0], TLB[i][1], TLB[i][2], TLB[i][3], TLB[i][4]);
+
+	printf("===============================================\n");
+}
+
+// Prints out valid entries of the PageTable
+void printValidPageTable(void)
+{
+	printf("=======================PageTable======\n");
+	printf("|  vpn  |  V  |  D  |  R  |  Physical |\n");
+	printf("======================================\n");
+
+	for(int i = 0; i < VPAGES; i++)
+	{
+		if(PageTable[i][0] == 1)
+			printf("|  %d  |  %d  |  %d  |  %d  |     %d     |\n", i, PageTable[i][0], PageTable[i][1], PageTable[i][2], PageTable[i][3]);
+	}
+
+	printf("======================================\n");
+}
+
+// Prints out allocated entires in FrameTable
+void printAllocatedFrames(void)
+{
+	printf("ALLOCATED FRAMES\n");
+	for(int i = 0; i < FRAMES; i++)
+		if(FrameTable[i] == 1)
+			printf("%d\n", i);
+	return;
+}
+
+// Prints out unallocated entires in FrameTable
+void printUnAllocatedFrames(void)
+{
+	printf("UNALLOCATED FRAMES\n");
+	for(int i = 0; i < FRAMES; i++)
+		if(FrameTable[i] == 0)
+			printf("%d\n", i);
+	return;
+}
+
+
 // Main function
 int main(void)
 {
 	// Seeding RNG needed for functions
 	srand(time(NULL));
+	int result = 0;
 
-
-	int freq[8];
-
-	for(int i = 0; i < 8; i++)
-		freq[i] = 0;
-
-	// Initializing TLB to zero (Setting valid bit to 0)
-	for(int i = 0; i < TLB_SIZE; i++)
-		TLB[i][0] = 0;
-
-	
-
+	printTLB();
+	printValidPageTable();
+	memory_access (	TLB, TLB_SIZE, PageTable, VPAGES, FrameTable, FRAMES, address, read_write, statistics);
 
 	return 0;
 }
+

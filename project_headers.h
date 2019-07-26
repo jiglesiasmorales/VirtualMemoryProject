@@ -111,7 +111,7 @@ unsigned int select_TLB_shootdown_candidate(unsigned int TLB[][5], int size)
 
 }
 
-// DONE
+// DONE & Tested
 // Perform a TLB shootdown (set V=0, copy D,R bits to the page table)
 // Pre-condition: shootdown entry is currently valid
 // Parameter index is the TLB entry to shoot down
@@ -139,7 +139,7 @@ void TLB_shootdown (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 	return;
 }
 
-// DONE
+// DONE & TESTED
 // Copies a translation from the Page Table to the TLB
 // The first available TLB entry is used; otherwise, a TLB shootdown is performed
 // It copies the D,R bits and the frame number from the page table
@@ -223,7 +223,7 @@ int cache_translation_in_TLB (unsigned int TLB[][5], int tlb_size, unsigned int 
 // If an index constains a 0 it is not allocated if it contains a 1 then it is allocated.
 
 
-// DONE
+// DONE & TESTED
 // Returns the index of the first available frame
 // Returns -1 if all frames are allocated
 // Written by : Jan Iglesias
@@ -239,7 +239,7 @@ int get_available_frame (unsigned int FrameTable[], int size)
 	return -1;
 
 }
-// DONE
+// DONE & TESTED
 // Search the PageTable for VDR values passed as parameters
 // Return -1 if not found; otherwise, return the index of one such
 // randomized entry (using rand function)
@@ -251,7 +251,6 @@ int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D,
 	int resultsFound = 0;
 	int validEntries[size];
 	int result;
-	srand(time(0));
 
 	// Initiazliing validEntries to zero
 	for(int i = 0; i < size; i++)
@@ -273,7 +272,7 @@ int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D,
 	if(resultsFound != 0)
 	{
 		result =  rand() % resultsFound ;
-		return validEntries[resultsFound];
+		return validEntries[result];
 	}
 
 	// If no results are found
@@ -283,7 +282,7 @@ int search_PageTable_by_VDR(unsigned int PageTable[][4], int size, int V, int D,
 }
 
 
-// DONE
+// DONE & TESTED
 // Selects the virtual page that will be replaced
 // Pre-condition: All the frames are allocated
 // Criteria: Valid must be 1; choose in order as below
@@ -313,7 +312,7 @@ unsigned int select_page_eviction_candidate(unsigned int PageTable[][4], int siz
 
 }
 
-// DONE
+// DONE & TESTED
 // Evict a page from RAM to the hard disk
 // If its translation is in the TLB, perform a TLB shootdown
 // If the page is dirty, write it to hard disk
@@ -339,15 +338,22 @@ int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int 
 	if (dirty == 1)
 		result+= 10;
 	
+	
+
 	// Getting tlb entry of page to be evicted
 	evictTlbEntry = TLB_lookup(TLB, tlb_size, vpn);
+
+	
 
 	// TLB shootdown is necessary
 	if( evictTlbEntry != -1)
 	{
 		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, evictTlbEntry);
+		PageTable[vpn][0] = 0;
 		result += 1;
 	}
+
+
 
 	// Setting evictedFrame to unallocated in memory
 	FrameTable[evictedFrame] = 0;
@@ -358,7 +364,7 @@ int page_evict (	unsigned int PageTable[][4], int page_table_size, unsigned int 
 
 
 
-// DONE (Doubt)
+// DONE TESTED
 // Copies a page from the hard disk to the RAM 
 // Pre-conditions: Page currently not in RAM; page's translation is not in the TLB
 // Find a frame for the page; if all the frames are used, performa a page eviction
@@ -401,26 +407,8 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 	// Filling frame
 	FrameTable[frameLocation] = 1;
 
-	pageCandidate = -1;
 
-	// Finding available page table entry
-	for(int i = 0 ; i < page_table_size; i++)
-	{
-		if(PageTable[i][0] == 0)
-		{
-			pageCandidate = i;
-			break;
-		}
-	}
-
-	// If no candidate is found then we must evict a page.
-	if(pageCandidate == -1)
-	{
-		pageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
-		result += page_evict (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, pageCandidate);
-	}
-
-	// Filling found page
+	// Filling page
 	PageTable[vpn][0] = 1;
 	PageTable[vpn][1] = read_write;
 	PageTable[vpn][2] = 1;
@@ -431,110 +419,6 @@ int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsign
 
 	return result;
 }
-//
-//
-//
-// int cache_page_in_RAM (	unsigned int PageTable[][4], int page_table_size, unsigned int TLB[][5],
-// 						int tlb_size, unsigned int FrameTable[], int frame_table_size, unsigned int vpn,
-// 						int read_write	)
-// {
-// 	int evictionPageCandidate, result = 0, frameLocation, availableTLBEntry, pageCandidate;
-
-// 	// Finding available frame if any
-// 	frameLocation = get_available_frame(FrameTable, frame_table_size);
-
-// 	// If frameLocation remains as -1 then no spot is found and we must make space.
-// 	if(frameLocation == -1)
-// 	{
-// 		// Getting eviction page candidate, storing frameLocation and evicting page
-// 		evictionPageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
-// 		frameLocation = PageTable[evictionPageCandidate][3];
-// 		result += page_evict (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, evictionPageCandidate);
-
-// 		// Filling newly evicted frame
-// 		FrameTable[frameLocation] = 1;
-
-// 		// Filling newly evicted page
-// 		PageTable[evictionPageCandidate][0] = 1;
-// 		PageTable[evictionPageCandidate][1] = 0;
-// 		PageTable[evictionPageCandidate][2] = 0;
-// 		PageTable[evictionPageCandidate][3] = frameLocation;
-
-// 		// Filling TLB entry
-// 		// Finding TLB
-// 		availableTLBEntry = get_available_TLB_entry(TLB, tlb_size);
-
-// 		// If shootdown is necessary
-// 		if(availableTLBEntry == -1)
-// 		{
-// 			availableTLBEntry = select_TLB_shootdown_candidate(TLB, tlb_size);
-// 			TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, availableTLBEntry);
-// 		}
-
-// 		// Filling TLB
-// 		TLB[availableTLBEntry][0] = 1;
-// 		TLB[availableTLBEntry][1] = 0;
-// 		TLB[availableTLBEntry][2] = 0;
-// 		TLB[availableTLBEntry][3] = evictionPageCandidate;
-// 		TLB[availableTLBEntry][4] = frameLocation;
-
-// 		return result;
-// 	}
-
-// 	// Filling frame
-// 	FrameTable[frameLocation] = 1;
-
-// 	pageCandidate = -1;
-
-// 	// Finding available page table entry
-// 	for(int i = 0 ; i < page_table_size; i++)
-// 	{
-// 		if(PageTable[i][0] == 0)
-// 		{
-// 			pageCandidate = i;
-// 			break;
-// 		}
-// 	}
-
-// 	// If no candidate is found then we must evict a page.
-// 	if(pageCandidate == -1)
-// 	{
-// 		pageCandidate = select_page_eviction_candidate(PageTable, page_table_size);
-// 		result += page_evict (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, pageCandidate);
-// 	}
-
-// 	// Filling found page
-// 	PageTable[pageCandidate][0] = 1;
-// 	PageTable[pageCandidate][1] = 0;
-// 	PageTable[pageCandidate][2] = 0;
-// 	PageTable[pageCandidate][3] = frameLocation;
-
-// 	// Filling TLB entry
-// 	// Finding TLB
-// 	availableTLBEntry = get_available_TLB_entry(TLB, tlb_size);
-
-// 	// If shootdown is necessary
-// 	if(availableTLBEntry == -1)
-// 	{
-// 		availableTLBEntry = select_TLB_shootdown_candidate(TLB, tlb_size);
-// 		TLB_shootdown (TLB, tlb_size, PageTable, page_table_size, availableTLBEntry);
-// 		result++;
-// 	}
-
-// 	// Filling TLB
-// 	TLB[availableTLBEntry][0] = 1;
-// 	TLB[availableTLBEntry][1] = 0;
-// 	TLB[availableTLBEntry][2] = 0;
-// 	TLB[availableTLBEntry][3] = pageCandidate;
-// 	TLB[availableTLBEntry][4] = frameLocation;
-
-// 	return result;
-
-// }
-
-
-
-
 //******************************************************************************
 // DONE
 // Clears the reference bits of the TLB and the Page Table
@@ -559,10 +443,19 @@ void reset_reference_bits (unsigned int TLB[][5], int tlb_size, unsigned int Pag
 //***********************  Overall  Function  **********************************
 //******************************************************************************
 
+// int statistics [8] will contain the relevant stats data
+// statistics [0] = TLB hit
+// statistics [1] = TLB miss
+// statistics [2] = Page Table Hit
+// statistics [3] = Page Table Fault
+// statistics [4] = TLB shootdown
+// statistics [5] = Page Eviction
+// statistics [6] = HD read
+// statistics [7] = HD write
 // Simulates a memory access; updates all the data and statistics
 void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable[][4],
 						int page_table_size, unsigned int FrameTable[], int frame_table_size,
-						unsigned int address, int read_write	)
+						unsigned int address, int read_write, int statistics [8])
 {
 	int tlbLookUpResult, validCopy, dirtyCopy, refCopy, frameCopy;
 	int result = 0;
@@ -574,22 +467,25 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 	// If tlbLookUp returns a -1 then it is a miss
 	if(tlbLookUpResult == -1)
 	{
+		//Incrementing TLB Miss
+		statistics[1]++;
+
 		// Checking if data is in Page Table
 		// If it is in page table then we transfer it to TLB (Hit)
 		if(PageTable[vpn][0] == 1)
 		{
+
+			//Incrementing PageTable hit
+			statistics[2]++;
+
 			// We must get the info from the pageTable and put it in the TLB
 			result = cache_translation_in_TLB (TLB, tlb_size, PageTable, page_table_size, vpn);
 
 			// Shootdown was performed
 			if(result == 1)
 			{
-
-			}
-			// Shootdown was NOT performed
-			else
-			{
-
+				//Incrementing TLB shootdown
+				statistics[4]++;
 			}
 
 			// Getting location of TLB entry
@@ -615,24 +511,30 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 		// It is not in page table. Must get from frameTable (Miss)
 		else
 		{
+			//Incrementing PageTable miss
+			statistics[3]++;
+
 			result = cache_page_in_RAM (PageTable, page_table_size, TLB, tlb_size, FrameTable, frame_table_size, vpn, read_write);
 
 			// Shootdown performed
 			if(result & 1 == 1)
 			{
-
+				//Incrementing TLB shootdown
+				statistics[4]++;
 			}
 
-			// Hard drive access
+			// Hard drive write
 			if( (result >> 1) & 1 == 1)
 			{
-
+				//Incrementing HD Write
+				statistics[7]++;
 			}
 
-			// Hard drive access
+			// Page Eviction
 			if( (result >> 2) & 1 == 1)
 			{
-
+				//Incrementing Page Eviction
+				statistics[5]++;
 			}
 
 			// We must get the info from the pageTable and put it in the TLB
@@ -641,13 +543,10 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 			// Shootdown was performed
 			if(result == 1)
 			{
-
+				//Incrementing TLB shootdown
+				statistics[4]++;
 			}
-			// Shootdown was NOT performed
-			else
-			{
 
-			}
 
 			// Getting location of TLB entry
 			tlbLookUpResult = TLB_lookup(TLB, tlb_size, vpn);
@@ -666,6 +565,9 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 
 			}
 
+			//Incrementing HD Read
+			statistics[6]++;
+
 			return;
 		}
 
@@ -673,6 +575,9 @@ void memory_access (	unsigned int TLB[][5], int tlb_size, unsigned int PageTable
 	// else it is a hit
 	else
 	{
+		//Incrementing TLB Hit
+		statistics[0]++;
+
 		// Read
 		if(read_write == 0)
 		{
